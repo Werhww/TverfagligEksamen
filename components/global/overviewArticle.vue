@@ -1,0 +1,64 @@
+<script setup lang="ts">
+import type { Article } from '@prisma/client';
+
+const props = defineProps<{
+	data: Article
+	search: string
+}>()
+
+const searchStates = ref({
+	name: false,
+	path: false,
+})
+
+const titleEl = computed(() => {
+	const title = props.data.title
+
+	const { html, isMatch } = highlightSearchTerm(title, props.search)
+	searchStates.value.name = isMatch
+	return html
+})
+
+const contentEl = computed(() => {
+	const content = props.data.content
+	const cleanContent = removeHtmlTags(content)
+	const length = 100
+	const trimmedContent =
+		cleanContent.length > length
+			? cleanContent.substring(0, length - 3) + "..."
+			: cleanContent
+
+	const { isMatch } = highlightSearchTerm(cleanContent, props.search)
+	const { html } = highlightSearchTerm(trimmedContent, props.search)
+	searchStates.value.path = isMatch
+	return html
+})
+
+function removeHtmlTags(input: string) {
+	return input.replace(/<[^>]*>/g, "")
+}
+
+const show = computed(() => {
+	if (props.search === "") return true
+
+	return searchStates.value.name || searchStates.value.path
+})
+</script>
+
+<template>
+	<QCard v-show="show" flat class="bg-grey-9">
+		<div class="text-h3 underline-hover" v-html="titleEl" @click="useRouter().push(`/artikkel/endre-${data.id}`)"></div>
+        <div class="text-undertitle text-grey-5 q-gutter-x-md"><span>Opprettet {{ timeSince(data.createdAt) }}</span><span v-if="data.updatedAt !== data.createdAt">Sist endret {{ timeSince(data.updatedAt) }}</span></div>
+        <div class="text-body1 text-grey-5" v-html="contentEl"></div>
+	</QCard>
+</template>
+
+<style scoped lang="scss">
+.underline-hover {
+    cursor: pointer;
+    transition: all 0.3s;
+    &:hover {
+        text-decoration: underline;
+    }
+}
+</style>
